@@ -1,20 +1,44 @@
 import MovieCard from "../components/MovieCard";
-import { useState } from "react";
-
+import { useState, useEffect } from "react";
+import { searchMovies, getPopularMovies } from "../services/api";
+import '../css/Home.css';
 
 function Home() {
   const [searchQuery, setSearchQuery] = useState("");
-  const movies = [
-    {id: 1, title: "John Wick", release_date: "2023-01-01", overview: "Overview of Movie 1", poster_path: "/path/to/poster1.jpg"},
-    {id: 2, title: "Terminator", release_date: "2023-02-01", overview: "Overview of Movie 2", poster_path: "/path/to/poster2.jpg"},
-    {id: 3, title: "The matrix", release_date: "2023-03-01", overview: "Overview of Movie 3", poster_path: "/path/to/poster3.jpg"},
-  ];
+  const [movies, setMovies] = useState([]);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    const loadPopularMovies = async () => {
+      try {
+        const popularMovies = await getPopularMovies();
+        setMovies(popularMovies);
+      } catch (error) {
+        console.error("Error fetching popular movies:", error);
+        setError("Failed to load popular movies. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadPopularMovies();
+  }, []);
 
-  const handleSearch = (e) => {
+  const handleSearch = async (e) => {
     e.preventDefault();
-    alert(`Searching for: ${searchQuery}`);
-  }
+    if (!searchQuery.trim()) return;
+    
+    setLoading(true);
+    try {
+      const results = await searchMovies(searchQuery);
+      setMovies(results);
+    } catch (error) {
+      console.error("Error searching movies:", error);
+      setError("Failed to search movies. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="home">
@@ -31,14 +55,17 @@ function Home() {
         </button>
       </form>
 
-
-        <div div className="movies-grid">
-          {movies.map( (movie) => (
-            movie.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
-            <MovieCard movie={movie} key={movie.id} />
-          ))}
-        </div>
+      {loading && <p className="loading">Loading movies...</p>}
+      {error && <p className="error">{error}</p>}
       
+      <div className="movies-grid">
+        {!loading && !error && movies.length === 0 && (
+          <p>No movies found. Try a different search.</p>
+        )}
+        {movies.map((movie) => (
+          <MovieCard movie={movie} key={movie.id} />
+        ))}
+      </div>
     </div>
   );
 }
